@@ -1,0 +1,12 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.14.1+cpu
+torchvision==0.29.1+cpu
+sentence-transformers==6.1.0
+transformers==5.19.0
+huggingface-hub==1.33.0
+pillow==12.3.0
+numpy==2.5.3
+onnxruntime==1.31.0
+opencv-python-headless==5.0.0.93
+openvino==2026.4.1
+rapidocr==3.10.0
