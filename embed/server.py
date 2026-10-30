@@ -13,6 +13,12 @@
 # Every POST needs "Authorization: Bearer <EMBED_TOKEN>". The work runs one
 # job per kind at a time; text queries have their own lane, so a search never
 # waits behind a photo.
+#
+# A job that runs longer than EMBED_JOB_LIMIT_S (default 300) is stuck: the Intel
+# GPU can hang inside the vision tower, and then every later image waits for a
+# lock that never opens while GET / still says ok. The watchdog ends the process
+# so systemd starts a fresh one.
+import contextlib
 import hmac
 import json
 import os
@@ -23,21 +29,49 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from embed import otel
 
 MAX_BODY = 48 * 1024 * 1024
+JOB_LIMIT_S = float(os.environ.get("EMBED_JOB_LIMIT_S", "300"))
+WATCH_EVERY_S = 5
+EXIT_STUCK = 70
 
 
 class Lanes:
     """One lock per kind of work. Text queries, images, faces and OCR may run
     at the same time; two jobs of one kind queue."""
 
-    def __init__(self):
-        self.text = threading.Lock()
-        self.image = threading.Lock()
-        self.faces = threading.Lock()
-        self.ocr = threading.Lock()
+    def __init__(self, clock=time.monotonic):
+        self.clock = clock
+        self.locks = {name: threading.Lock() for name in ("text", "image", "faces", "ocr")}
+        # When the job running now in each lane began.
+        self.started = {}
+
+    @contextlib.contextmanager
+    def run(self, name):
+        with self.locks[name]:
+            self.started[name] = self.clock()
+            try:
+                yield
+            finally:
+                self.started.pop(name, None)
+
+    def stuck(self, limit):
+        """The lanes whose running job is older than limit seconds."""
+        now = self.clock()
+        return [name for name, began in list(self.started.items()) if now - began > limit]
 
 
-def make_handler(backends, token):
-    lanes = Lanes()
+def watch(lanes, limit, stop, every=WATCH_EVERY_S, die=lambda: os._exit(EXIT_STUCK)):
+    """Ends the process when a job runs past the limit. It cannot interrupt a
+    hung GPU call, so ending the process is the only way out."""
+    while not stop.wait(every):
+        stuck = lanes.stuck(limit)
+        if stuck:
+            otel.log("watchdog", {"lanes": ",".join(stuck), "limit_s": limit}, "ERROR")
+            otel.flush()
+            die()
+
+
+def make_handler(backends, token, lanes=None):
+    lanes = lanes or Lanes()
     expected = f"Bearer {token}".encode()
 
     class Handler(BaseHTTPRequestHandler):
@@ -67,15 +101,15 @@ def make_handler(backends, token):
                     if kind not in ("query", "document"):
                         raise ValueError("kind must be query or document")
                     images = any("image_b64" in item for item in items)
-                    with lanes.image if images else lanes.text:
+                    with lanes.run("image" if images else "text"):
                         result = {"vectors": backends.embed(kind, items)}
                     count = len(items)
                 elif route == "/faces":
-                    with lanes.faces:
+                    with lanes.run("faces"):
                         result = backends.faces(body["image_b64"])
                     count = len(result["faces"])
                 else:
-                    with lanes.ocr:
+                    with lanes.run("ocr"):
                         result = backends.ocr(body["image_b64"])
                     count = len(result["lines"])
             except (KeyError, ValueError, TypeError) as error:
@@ -113,8 +147,10 @@ def main():
         raise SystemExit("EMBED_TOKEN is required")
     backends = Backends(os.environ.get("EMBED_MODELS", "/var/lib/embed"), int(os.environ.get("EMBED_THREADS", "4")))
     port = int(os.environ.get("EMBED_PORT", "8000"))
-    otel.log("ready", {"port": port, **backends.status()})
-    ThreadingHTTPServer(("0.0.0.0", port), make_handler(backends, token)).serve_forever()
+    otel.log("ready", {"port": port, "job_limit_s": JOB_LIMIT_S, **backends.status()})
+    lanes = Lanes()
+    threading.Thread(target=watch, args=(lanes, JOB_LIMIT_S, threading.Event()), daemon=True).start()
+    ThreadingHTTPServer(("0.0.0.0", port), make_handler(backends, token, lanes)).serve_forever()
 
 
 if __name__ == "__main__":
