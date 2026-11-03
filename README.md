@@ -29,8 +29,8 @@ The first start downloads the models (about 1.4 GB) and converts the vision towe
 
 ## Usage
 
-1. Write `/etc/embed/env` from `deploy/env.example`.
-2. Run `sh deploy/install.sh` as root on the host.
+1. Run `sh deploy/install.sh` as root on the host: it builds the Python environment.
+2. Install the land agent with app `embed`, write `/srv/apps/embed/env` from `deploy/env.example`, and copy `deploy/hardening.conf` into `/etc/systemd/system/carrel-app-embed.service.d/`.
 3. Call `POST /embed`, `/faces` or `/ocr` with `Authorization: Bearer <EMBED_TOKEN>`.
 
 ```sh
@@ -72,8 +72,8 @@ Facts for coding agents and LLM tools. The rules for changing the code are in [A
 - **Type**: service
 - **Interfaces**: HTTP `GET /`, `POST /embed`, `POST /faces`, `POST /ocr`
 - **Install**: `sh deploy/install.sh` as root, with uv and Intel's compute runtime
-- **Run**: `systemctl start embed`
+- **Run**: a merge to main deploys through land (`carrel-app-embed`); rerun `deploy/install.sh` when `requirements.txt` changes
 - **Verify**: `python3 -m unittest discover -s tests -t .`
 - **Config**: `EMBED_TOKEN`, `EMBED_MODELS`, `EMBED_THREADS`, `EMBED_PORT`, `EMBED_VISION`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_SERVICE_NAME`
-- **Secrets**: `EMBED_TOKEN` and the OTLP header live in `/etc/embed/env` on the host.
+- **Secrets**: `EMBED_TOKEN` and the OTLP header live in `/srv/apps/embed/env` on the host.
 - **Limits**: One job per kind at a time. buffalo_l is for non-commercial research use.
