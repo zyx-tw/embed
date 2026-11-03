@@ -31,8 +31,8 @@ curl -s http://localhost:8000/
 
 ## 使用方式
 
-1. 照 `deploy/env.example` 寫好 `/etc/embed/env`。
-2. 在主機上用 root 執行 `sh deploy/install.sh`。
+1. 在主機上用 root 執行 `sh deploy/install.sh`，建好 Python 環境。
+2. 裝好 land agent(app `embed`)，照 `deploy/env.example` 寫 `/srv/apps/embed/env`，再把 `deploy/hardening.conf` 放進 `/etc/systemd/system/carrel-app-embed.service.d/`。
 3. 呼叫 `POST /embed`、`/faces` 或 `/ocr`，帶 `Authorization: Bearer <EMBED_TOKEN>`。
 
 ## 設定

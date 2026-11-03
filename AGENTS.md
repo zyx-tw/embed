@@ -6,7 +6,7 @@
 - `embed/backends.py`: the models. EmbeddingGemma 2 in sentence-transformers, its vision tower on the Intel GPU through OpenVINO, faces, and OCR.
 - `embed/faces.py`: SCRFD and ArcFace from InsightFace's buffalo_l, run with onnxruntime. Copied from NYCU-WinLab/gallery; keep the two alike.
 - `embed/otel.py`: OTLP/HTTP JSON logs for sensorium.
-- `deploy/`: the systemd unit, the env file shape and the install script.
+- `deploy/`: the release bundle, its smoke test, the start script land runs, the unit hardening, the env file shape and the venv install script. A merge to `main` deploys through land; wait with `golem-watch zyx1121/embed <sha>`.
 
 ## Rules
 

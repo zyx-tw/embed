@@ -16,3 +16,21 @@ jobs:
       - run: pip install ruff==0.17.2
       - run: ruff check embed tests scripts
       - run: python -m unittest discover -s tests -t .
+
+  image:
+    uses: zyx1121/.github/.github/workflows/image.yml@main
+    permissions:
+      contents: read
+      packages: write
+    with:
+      images: '[{"name": "ghcr.io/zyx1121/embed", "file": "deploy/release.Dockerfile"}]'
+      smoke: bash deploy/smoke.sh
+
+  promote:
+    needs: [check, image]
+    uses: zyx1121/.github/.github/workflows/promote.yml@main
+    permissions:
+      contents: read
+      packages: write
+    with:
+      images: '["ghcr.io/zyx1121/embed"]'
