@@ -23,7 +23,7 @@ jobs:
       contents: read
       packages: write
     with:
-      images: '[{"name": "ghcr.io/zyx1121/embed", "file": "deploy/release.Dockerfile"}]'
+      images: '[{"name": "ghcr.io/zyx-tw/embed", "file": "deploy/release.Dockerfile"}]'
       smoke: bash deploy/smoke.sh
 
   promote:
@@ -33,4 +33,4 @@ jobs:
       contents: read
       packages: write
     with:
-      images: '["ghcr.io/zyx1121/embed"]'
+      images: '["ghcr.io/zyx-tw/embed"]'
