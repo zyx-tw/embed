@@ -3,7 +3,7 @@
 # holds the package and compiles with the CT's Python. The models need the GPU
 # host, so the server itself is checked by the deploy's health check.
 set -euo pipefail
-image=${1:-ghcr.io/zyx1121/embed:ci}
+image=${1:-ghcr.io/zyx-tw/embed:ci}
 dir=$(mktemp -d)
 cid=$(docker create "$image" /none)
 docker cp "$cid:/release/." "$dir/"
